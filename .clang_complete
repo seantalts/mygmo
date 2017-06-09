@@ -1,0 +1,17 @@
+-I.
+-DBOOST_RESULT_OF_USE_TR1
+-DBOOST_NO_DECLTYPE
+-DBOOST_DISABLE_ASSERTS
+-DNO_FPRINTF_OUTPUT
+-isystem stan/lib/stan_math/lib/eigen_3.2.9
+-isystem stan/lib/stan_math/lib/boost_1.62.0
+-isystem stan/lib/stan_math/lib/cvodes_2.9.0/include
+-I./stan/lib/stan_math
+-Wall
+-Wno-unknown-warning-option
+-Wno-unused-function
+-Wno-unused-parameter
+-Wno-tautological-compare
+-Wno-c++11-long-long
+-Wsign-compare
+-Wno-unused-local-typedef
