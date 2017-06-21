@@ -61,8 +61,12 @@ MATH ?= $(STAN)/lib/stan_math/
 ##
 -include make/detect_os
 
-model1: src/model1.cpp src/inner_schools.hpp src/outer_schools.hpp
+model1: src/model1.cpp src/util.hpp src/gmo.hpp
 	$(CC) $(CFLAGS) -O$(O) -o model1 src/model1.cpp -I src/
+
+test: src/test.cpp src/util.hpp src/gmo.hpp
+	$(CC) $(CFLAGS) -O$(O) -o test src/test.cpp -I src/
+	./test
 
 %.hpp: %.stan
 	~/scm/cmdstan/bin/stanc $< --o=$@

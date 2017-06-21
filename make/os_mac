@@ -26,7 +26,7 @@ ifeq (clang++,$(CC_TYPE))
   endif
   #PCH = .pch
   ifeq (4.2,$(CC_MAJOR).$(CC_MINOR))
-    TEMPLATE_DEPTH ?= 256
+    TEMPLATE_DEPTH ?= 64
     CFLAGS += -ftemplate-depth=$(TEMPLATE_DEPTH)
   endif
 endif
