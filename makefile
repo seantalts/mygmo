@@ -64,6 +64,9 @@ MATH ?= $(STAN)/lib/stan_math/
 model1: src/model1.cpp src/util.hpp src/gmo.hpp
 	$(CC) $(CFLAGS) -O$(O) -o model1 src/model1.cpp -I src/
 
+model2: src/model2.cpp src/util.hpp src/gmo.hpp
+	$(CC) $(CFLAGS) -O$(O) -o model2 src/model2.cpp -I src/
+
 test: src/test.cpp src/util.hpp src/gmo.hpp
 	$(CC) $(CFLAGS) -O$(O) -o test src/test.cpp -I src/
 	./test
