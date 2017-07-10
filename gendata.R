@@ -48,7 +48,7 @@ gen_percentiles <- function(gen_model_file, gen_data, data_vars, data_rows, outc
   outcome_names <- mapCat(getVarNames, outcome_vars)
   nonParamNames <- union(union(data_names, outcome_names), c("lp__"))
   paramNames <- setdiff(names(gdf), nonParamNames)
-  target_model <- stan_model("hierarchical_logistic_regression.stan")
+  target_model <- stan_model(target_model_file)
   
   
   #setup parallel backend to use many processors
@@ -56,7 +56,7 @@ gen_percentiles <- function(gen_model_file, gen_data, data_vars, data_rows, outc
   cl <- makeCluster(cores[1])
   registerDoParallel(cl)
   
-  replicates_matrix <- foreach(i=1:num_replicates, .combine=rbind) %do% {
+  replicates_matrix <- foreach(i=1:num_replicates, .combine=rbind) %dopar% {
     names <- c(data_vars, outcome_vars)
     rows <- c(data_rows, outcome_rows)
     for (j in seq_along(names)) {
