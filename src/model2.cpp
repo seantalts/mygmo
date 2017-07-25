@@ -53,34 +53,41 @@ namespace {
                           sigma);
     }
   };
-
-  void gen_data() {
-    using std::cout;
-    using std::endl;
-
-    int num_indivs = 100;
-    int num_groups = 10;
-    int num_group_features = 5;
-    int num_indiv_features = 5;
-    vector<int> group_for_indiv(num_indivs);
-    for (int i = 0; i < num_groups; ++i)
-      for (int j = 0; j < num_indivs / num_groups; ++j)
-        group_for_indiv[i*10+j] = i;
-    cout << group_for_indiv[23] << endl;
-  }
 }
 
 int main(int argc, const char* argv[]) {
   using Eigen::VectorXd;
   // Set up data
+  int N = 8;
+  int K = 2;
+  int J = 2;
+  int L = 3;
+  MatrixXd x(N, K);
+  x << -6.3228490, 13.5336893, -1.5675845, 0.3730190, -4.4344975, 5.0613612,
+    -2.4631817, -5.0399788, -8.3380768, 0.1271512, 19.9426983, 6.1103013, -3.0379787,
+    -11.0154858, -25.3439396, -3.0595938;
+  VectorXd u1(L);
+  VectorXd u2(L);
+  u1 << -3.8335517, -11.9532094, 4.4341937;
+  u2 << -2.2207795, 10.4194008, -5.0440609;
+  vector<VectorXd> u {u1, u2};
+  VectorXd y(N);
+  y << 1527.6682088, -1267.6828239, 1314.5835858, 488.7249873, 758.1054782,
+    777.1681065, -2091.1838994, -704.2232294;
+  hls model({1, 1, 2, 2, 1, 1, 2, 2},
+            x, u, y);
 
-  gen_data();
-
-  // hls model(vector<int>());
-  // std::cout << "Calling GMO for hierarchical logistic regr" << std::endl;
-  // auto f = [&](const auto& locals, const auto& globals) {
-  //   return model(locals, globals[0], globals[1], y, sigma);
-  // };
+  std::cout << "Calling GMO for hierarchical logistic regr" << std::endl;
+  auto f = [&](const auto& locals, const auto& globals) {
+    // Let's consider the coeffs to be locals we want to marginalize over.
+    // locals
+    MatrixXd group_coeffs(L, K);
+    MatrixXd indiv_coeffs_by_group(L, K);
+    // globals
+    VectorXd prior_corr(K);
+    VectorXd prior_scale(K);
+  };
+  //mygmo::GMO(model, );
   // mygmo::GMO(f, 50, 2);
 
   return 0;

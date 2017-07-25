@@ -4,47 +4,42 @@ data {
   int<lower=1> J;              // num groups
   int<lower=1> L;              // num group predictors
   int<lower=1,upper=J> jj[N];  // group for individual
+  matrix[N, K] x;               // individual predictors
+  matrix[J, L] u;              // group predictors
 }
 
 generated quantities {
-  corr_matrix[K] Omega;        // prior correlation
+  matrix[K, J] z;
+  cholesky_factor_corr[K] L_Omega;
+  matrix[K, K] Omega;             // prior correlation
   vector<lower=0>[K] tau;      // prior scale
   matrix[L, K] gamma;           // group coeffs
-  vector[K] beta[J];           // indiv coeffs by group
+  matrix[J, K] beta;           // indiv coeffs by group
   real<lower=0> sigma;         // prediction error scale
-  matrix[N, K] x;               // individual predictors
-  row_vector[L] u[J];          // group predictors
   vector[N] y;                 // outcomes
 
-  Omega = lkj_corr_rng(K, 2);
-  for (n in 1:K) {
-    tau[n] = fabs(cauchy_rng(0, 2.5));
+  L_Omega = lkj_corr_cholesky_rng(K, 4);
+
+  for (k in 1:K) {
+    tau[k] = -1;
+    while (tau[k] <= 0)
+      tau[k] = normal_rng(0, 5);
+    for (j in 1:J)
+      z[k, j] = normal_rng(0, 1);
   }
-  for (i in 1:L) {
-    for (j in 1:K) {  
+
+  for (i in 1:L)
+    for (j in 1:K)
       gamma[i, j] = normal_rng(0, 5);
-    }
-  }
-  sigma = fabs(cauchy_rng(0, 2.5));
-  for (j in 1:J)
-    for (k in 1:K)
-      beta[j, k] = normal_rng(0, 5);
 
+  sigma = -1;
+  while (sigma <= 0)
+    sigma = normal_rng(0, 5);
 
+  beta = u * gamma + (diag_pre_multiply(tau, L_Omega) * z)';
+  
   for (n in 1:N)
-    for (k in 1:K)
-      x[n, k] = normal_rng(0, 10);
-      
-  for (j in 1:J)
-    for (l in 1:L)
-      u[j, l] = normal_rng(0, 5);
-  {
-    row_vector[K] u_gamma[J];
-    for (j in 1:J) {
-      u_gamma[j] = u[j] * gamma;
-      beta[j] = multi_normal_rng(to_vector(u_gamma[j]), quad_form_diag(Omega, tau));
-    }
-  }
-  for (n in 1:N)
-    y[n] = normal_rng(x[n] * beta[jj[n]], sigma);
+    y[n] = normal_rng(dot_product(beta[jj[n]], x[n]), sigma);
+  
+  Omega = L_Omega' * L_Omega;
 }

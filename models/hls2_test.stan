@@ -20,14 +20,14 @@ transformed parameters {
   beta = u * gamma + (diag_pre_multiply(tau, L_Omega) * z)';
 }
 model {
-  L_Omega ~ lkj_corr_cholesky(4);
+  sigma ~ normal(0, 5);
   tau ~ normal(0, 5);
   to_vector(z) ~ normal(0, 1);
+  L_Omega ~ lkj_corr_cholesky(2);
   to_vector(gamma) ~ normal(0, 5);
-  sigma ~ normal(0, 5);
-  y ~ normal(rows_dot_product(beta[jj] , x), sigma);
-  // for logistic:
-  // bernoulli_logit_regression(beta[jj], x)
+  //y ~ normal(rows_dot_product(beta[jj] , x), sigma);
+  for (n in 1:N)
+    y[n] ~ normal(dot_product(beta[jj[n]], x[n]), sigma);
 }
 
 generated quantities {
