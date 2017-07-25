@@ -99,35 +99,36 @@ add.alpha <- function(col, alpha=1){
 }
 #===================================================================
 
-setwd("~/scm/mygmo")
+setwd("~/scm/mygmo") #XXX probably need to change this for your machine
 
 
 #========== HLR ============
-d <- list(N=8, K=2, J=2, L=3, jj=c(1, 1, 2, 2, 1, 1, 2, 2))
-d$x <- matrix(rnorm(d$N * d$K, 0, 5), nrow=d$N)
-d$u <- matrix(rnorm(d$J * d$L, 0, 5), nrow=d$J)
-data_vars <- c("y")
-data_rows <- c(1)
-rm <- gen_percentiles("models/hls_gendata.stan", d,
-                      data_vars, data_rows,
-                      "models/hierarchical_logistic_regression.stan",
-                      num_replicates = 256)
-hist(rm[,-c(5, 7, 9, 12)], breaks=400)
+#d <- list(N=8, K=2, J=2, L=3, jj=c(1, 1, 2, 2, 1, 1, 2, 2))
+#d$x <- matrix(rnorm(d$N * d$K, 0, 5), nrow=d$N)
+#d$u <- matrix(rnorm(d$J * d$L, 0, 5), nrow=d$J)
+#data_vars <- c("y")
+#data_rows <- c(1)
+#rm <- gen_percentiles("models/hls_gendata.stan", d,
+#                      data_vars, data_rows,
+#                      "models/hierarchical_logistic_regression.stan",
+#                      num_replicates = 256)
+#hist(rm[,-c(5, 7, 9, 12)], breaks=400)
 
 #========= 8 schools NCP ============
-d <- list(J=8, K=2, sigma = c(15, 10, 16, 11,  9, 11, 10, 18))
-rm2 <- gen_percentiles("models/gen_8schools.stan", d, c("y"), c(1), "models/8schools.stan")
-hist(rm2, breaks=400)
+#d <- list(J=8, K=2, sigma = c(15, 10, 16, 11,  9, 11, 10, 18))
+#rm2 <- gen_percentiles("models/gen_8schools.stan", d, c("y"), c(1), "models/8schools.stan")
+#hist(rm2, breaks=400)
 
 #========= Lin Regr ======
-#d <- list(N=25, X=rnorm(25, 0, 5))
-#lin_regr_rm <- gen_percentiles("models/gen_lin_regr.stan", d, c("y"), c(1), "models/lin_regr.stan")
+d <- list(N=25, X=rnorm(25, 0, 5))
+lin_regr_rm <- gen_percentiles("models/gen_lin_regr.stan", d, c("y"), c(1), "models/lin_regr.stan")
+hist(lin_regr_rm, breaks=400)
 
 #========= 8 Schools CP - see divergences, spike at 1 for tau
-d <- list(J=8, K=2, sigma = c(15, 10, 16, 11,  9, 11, 10, 18))
-rm <- gen_percentiles("models/gen_8schools.stan", d,
-                      c("y"), c(1),
-                      "models/8schools_centered.stan")
+#d <- list(J=8, K=2, sigma = c(15, 10, 16, 11,  9, 11, 10, 18))
+#rm <- gen_percentiles("models/gen_8schools.stan", d,
+#                      c("y"), c(1),
+#                      "models/8schools_centered.stan")
 
 # See how many divergences centered and non-centered (beta); if both -
 #   0. Plot divergent and non-divergent separately on marginal plots - use pairs plots
