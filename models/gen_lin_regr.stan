@@ -11,9 +11,8 @@ generated quantities {
 
   beta = normal_rng(0, 10);
   alpha = normal_rng(0, 10);
-  //sigma = fabs(normal_rng(0, 5));
   sigma = -1;
-  while (sigma <= 0)
+  while (sigma < 0)
     sigma = normal_rng(0, 5);
 
   for (n in 1:N)
