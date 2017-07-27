@@ -52,7 +52,7 @@ get_posterior_thetas <- function(theta0_draws, target_model, target_data,
   return(as.data.frame(target_fit));
 }
 
-get_quantiles <- function(param_names) {
+get_quantiles <- function(param_names, op) {
   return(function(cell) {
     theta0s <- cell[[1]]
     posterior_thetas <- cell[[2]]
@@ -61,7 +61,7 @@ get_quantiles <- function(param_names) {
     for (i in 1:length(param_names)) {
       theta0 = theta0s[,param_names[i]];
       samples_theta0 = posterior_thetas[,param_names[i]];
-      quantile = sum(samples_theta0 > theta0)/length(samples_theta0);
+      quantile = sum(op(samples_theta0, theta0))/length(samples_theta0);
       rankings[i] = quantile;
     }
     names(rankings) = param_names;
@@ -124,6 +124,30 @@ add.alpha <- function(col, alpha=1) {
         function(x) 
           rgb(x[1], x[2], x[3], alpha=alpha))  
 }
+
+pdfreplications <- function(replications, data_vars, name) {
+  paramNames <- get_param_names(replications[[1]][[1]], data_vars)
+  quants_lte <- sapply(replications, get_quantiles(paramNames, function(x, y) {return(x <= y)}))
+  quants_gt <- sapply(replications, get_quantiles(paramNames, function(x, y) {return(x > y)}))
+  plots <- function(quants_lte, quants_gt, breaks) {
+    par(mfrow=c(length(paramNames) + 1, 2))
+    par(mar=c(4,2,2,1)+0.1)
+    for (pn in paramNames) {
+      hist(quants_lte[pn,], breaks = breaks, main=NULL, xlab=pn)
+      hist(quants_gt[pn,], breaks = breaks, main=NULL, xlab=pn)
+    }
+    hist(quants_lte, breaks = breaks, main=NULL)
+    hist(quants_gt, breaks = breaks, main=NULL)
+  }
+  
+  pdf(paste(name, "pdf", sep="."))
+  widths <- c(0.05, 0.01, 0.005)
+  for (binwidth in widths) {
+    plots(quants_lte, quants_gt, seq(0, 1, binwidth))
+  }
+  dev.off()
+}
+
 #===================================================================
 
 setwd("~/scm/mygmo") #XXX probably need to change this for your machine
@@ -147,34 +171,21 @@ setwd("~/scm/mygmo") #XXX probably need to change this for your machine
 #hist(rm2, breaks=400)
 
 #========= Lin Regr ======
-#d <- list(N=25, X=rnorm(25, 0, 5))
+d <- list(N=25, X=rnorm(25, 0, 5))
 #lin_regr_rm <- gen_percentiles("models/gen_lin_regr.stan", d, c("y"), c(1), "models/lin_regr.stan", num_replicates = 10000)
 #hist(lin_regr_rm, breaks=500)
+lin_regr_rm <- gen_replications("models/gen_lin_regr.stan", d, c("y"), c(1), "models/lin_regr.stan", num_replicates = 10000)
+pdfreplications(lin_regr_rm, c("y"), "lin_regr")
 
 #========= Lin Regr constant sigma======
 d <- list(N=25, X=rnorm(25, 0, 5))
 lin_regr_rm_c2 <- gen_replications("models/gen_lin_regr_c.stan", d, c("y"), c(1), "models/lin_regr_c.stan", num_replicates = 10000)
-quants_gt2 <- sapply(lin_regr_rm_c2, get_quantiles(c("alpha", "beta")))
-plots <- function(quants_lte, quants_gt, breaks) {
-  par(mfrow=c(3,2))
-  hist(quants_lte["alpha",], breaks = breaks)
-  hist(quants_gt["alpha",], breaks = breaks)
-  hist(quants_lte["beta",], breaks = breaks)
-  hist(quants_gt["beta",], breaks = breaks)
-  hist(quants_lte, breaks = breaks)
-  hist(quants_gt, breaks = breaks)
-}
+pdfreplications(lin_regr_rm_c2, c("y"), "lin_regr_c")
 
-pdf("sassy.pdf")
-widths <- c(0.05, 0.01, 0.005)
-for (binwidth in widths) {
-  plots(quants_lte, quants_gt, seq(0, 1, binwidth))
-}
-for (binwidth in widths) {
-  plots(quants_lte2, quants_gt2, seq(0, 1, binwidth))
-}
-dev.off()
-
+#========= Lin Regr fabs sigma======
+d <- list(N=25, X=rnorm(25, 0, 5))
+lin_regr_rm_fabs <- gen_replications("models/gen_lin_regr_fabs.stan", d, c("y"), c(1), "models/lin_regr.stan", num_replicates = 10000)
+pdfreplications(lin_regr_rm_fabs, c("y"), "lin_regr_fabs")
 
 #========= 8 Schools CP - see divergences, spike at 1 for tau
 #d <- list(J=8, K=2, sigma = c(15, 10, 16, 11,  9, 11, 10, 18))
