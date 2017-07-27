@@ -11,10 +11,14 @@ mapCat <- function(f, coll) {
   return(unlist(lapply(coll, f)))
 }
 
-get_stan_draws <- function(gen_model, gen_data) {
+get_stan_draws <- function(gen_model, gen_data, num_draws = 4000, num_chains = 4) {
   gendata <- stan(gen_model,
                   data=gen_data,
-                  seed=1234,
+                  #seed=1234,
+                  seed=23489432,
+                  chains = num_chains,
+                  warmup = 0,
+                  iter = num_draws / num_chains,
                   control=list(max_treedepth = 12),
                   algorithm='Fixed_param')
   return(as.data.frame(gendata))
@@ -37,60 +41,83 @@ add_draws_to_constants <- function(draws, data_vars, data_rows, constants) {
   return(constants)
 }
 
-get_stan_fit_quantiles <- function(draw, param_names, target_model, target_data,
+get_posterior_thetas <- function(theta0_draws, target_model, target_data,
                                    num_chains=1, num_iters=1000) {
   library(rstan)
   target_fit = sampling(target_model, data=target_data,
                         chains=num_chains, iter=num_iters,
-                        seed=123433,
+                        #seed=123433,
+                        seed=23489432,
                         control=list(adapt_delta=0.99, max_treedepth=14));
-  target_matrix = as.matrix(target_fit);
-  
-  rankings = rep(NA, length(param_names));
-  mode(rankings) = "numeric";
-  for (i in 1:length(param_names)) {
-    theta0 = draw[,param_names[i]];
-    samples_theta0 = target_matrix[,param_names[i]];
-    quantile = sum(samples_theta0 > theta0)/length(samples_theta0);
-    rankings[i] = quantile;
-  }
-  names(rankings) = param_names;
-  return(rankings);
+  return(as.data.frame(target_fit));
 }
 
-gen_percentiles <- function(gen_model_file, gen_data, data_vars, data_rows, 
-                            target_model_file, num_replicates=1000) {
-  gdf <- get_stan_draws(gen_model_file, gen_data)
+get_quantiles <- function(param_names) {
+  return(function(cell) {
+    theta0s <- cell[[1]]
+    posterior_thetas <- cell[[2]]
+    rankings = rep(NA, length(param_names));
+    mode(rankings) = "numeric";
+    for (i in 1:length(param_names)) {
+      theta0 = theta0s[,param_names[i]];
+      samples_theta0 = posterior_thetas[,param_names[i]];
+      quantile = sum(samples_theta0 > theta0)/length(samples_theta0);
+      rankings[i] = quantile;
+    }
+    names(rankings) = param_names;
+    return(rankings);
+  })
+}
+
+get_param_names <- function(gdf, data_vars) {
   getVarNames <-function(name) {
     return(names(gdf)[grep(paste("^", name, sep=""), names(gdf))])
   }
   data_names <- mapCat(getVarNames, data_vars)
   nonParamNames <- union(data_names, c("lp__"))
   paramNames <- setdiff(names(gdf), nonParamNames)
+  return(paramNames)
+}
+
+gen_replications <- function(gen_model_file, gen_data, data_vars, data_rows, 
+                            target_model_file, num_replicates=1000) {
+  gdf <- get_stan_draws(gen_model_file, gen_data, num_draws=num_replicates)
   target_model <- stan_model(target_model_file)
   
   #setup parallel backend to use many processors
   cores=detectCores()
   cl <- makeCluster(cores[1])
   registerDoParallel(cl)
-
-  replicates_matrix <- foreach(i=1:num_replicates, .combine=rbind,
-                               .export = c("get_stan_fit_quantiles",
+  if (num_replicates > nrow(gdf)) {
+    print(paste0("Only ", nrow(gdf), " draws for ", num_replicates, " replicates!"))
+    return(NULL)
+  }
+  replications <- foreach(i=1:num_replicates, #.combine=rbind,
+                               .export = c("get_posterior_thetas", "get_param_names",
+                                           "mapCat",
                                            "add_draws_to_constants")) %dopar% {
     target_data <- add_draws_to_constants(gdf[i,], data_vars, data_rows, gen_data)
-    get_stan_fit_quantiles(gdf[i,], paramNames, target_model, target_data)
+    list(gdf[i,get_param_names(gdf, data_vars)],
+         get_posterior_thetas(gdf[i,], target_model, target_data))
   }
   
-  colnames(replicates_matrix) = paramNames
-  dput(replicates_matrix, file=paste(target_model_file, "matrix", sep="."))
+  dput(replications, file=paste(target_model_file, "replications", sep="."))
   stopCluster(cl)
-  return(replicates_matrix)
+  return(replications)
+}
+
+gen_percentiles <- function(gen_model_file, gen_data, data_vars, data_rows, 
+                            target_model_file, num_replicates=1000) {
+  replications <- gen_replications(gen_model_file, gen_data, data_vars, data_rows,
+                                   target_model_file, num_replicates)
+  paramNames <- get_param_names(replications, data_vars)
+  quantile_matrix <- vapply(replications, get_quantiles(paramNames))
+  return(quantile_matrix)
 }
 
 #+================3===
 
-
-add.alpha <- function(col, alpha=1){
+add.alpha <- function(col, alpha=1) {
   if(missing(col))
     stop("Please provide a vector of colours.")
   apply(sapply(col, col2rgb)/255, 2, 
@@ -120,9 +147,34 @@ setwd("~/scm/mygmo") #XXX probably need to change this for your machine
 #hist(rm2, breaks=400)
 
 #========= Lin Regr ======
+#d <- list(N=25, X=rnorm(25, 0, 5))
+#lin_regr_rm <- gen_percentiles("models/gen_lin_regr.stan", d, c("y"), c(1), "models/lin_regr.stan", num_replicates = 10000)
+#hist(lin_regr_rm, breaks=500)
+
+#========= Lin Regr constant sigma======
 d <- list(N=25, X=rnorm(25, 0, 5))
-lin_regr_rm <- gen_percentiles("models/gen_lin_regr.stan", d, c("y"), c(1), "models/lin_regr.stan")
-hist(lin_regr_rm, breaks=400)
+lin_regr_rm_c2 <- gen_replications("models/gen_lin_regr_c.stan", d, c("y"), c(1), "models/lin_regr_c.stan", num_replicates = 10000)
+quants_gt2 <- sapply(lin_regr_rm_c2, get_quantiles(c("alpha", "beta")))
+plots <- function(quants_lte, quants_gt, breaks) {
+  par(mfrow=c(3,2))
+  hist(quants_lte["alpha",], breaks = breaks)
+  hist(quants_gt["alpha",], breaks = breaks)
+  hist(quants_lte["beta",], breaks = breaks)
+  hist(quants_gt["beta",], breaks = breaks)
+  hist(quants_lte, breaks = breaks)
+  hist(quants_gt, breaks = breaks)
+}
+
+pdf("sassy.pdf")
+widths <- c(0.05, 0.01, 0.005)
+for (binwidth in widths) {
+  plots(quants_lte, quants_gt, seq(0, 1, binwidth))
+}
+for (binwidth in widths) {
+  plots(quants_lte2, quants_gt2, seq(0, 1, binwidth))
+}
+dev.off()
+
 
 #========= 8 Schools CP - see divergences, spike at 1 for tau
 #d <- list(J=8, K=2, sigma = c(15, 10, 16, 11,  9, 11, 10, 18))
