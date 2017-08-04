@@ -13,7 +13,7 @@ generated quantities {
   real y[J];               // estimated treatment effect (school j)
   
   mu = normal_rng(0, 5);
-  tau = fabs(normal_rng(0, 5));
+  tau = fabs(normal_rng(0, 4));
   //tau = -1;
   //while (tau <= 0)
   //  tau = normal_rng(0, 5);
